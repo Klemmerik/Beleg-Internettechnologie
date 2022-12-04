@@ -1,0 +1,85 @@
+\chapter{Planungsphase}
+
+\section{Prozessablauf}
+
+Die folgende \literef{Ablaufdiagramm} stellt den gesamten Prozess als Ablaufdiagramm dar.
+\bild[0.65]{Ablaufdiagramm.pdf}{Ablauf des Benachrichtigungsprozesses}{Ablaufdiagramm}
+
+
+\section{Server}
+Damit gewährleistet werden kann, dass der Service die ganze Zeit zur Verfügung steht, wird ein Server benötigt.
+Auf diesem Server werden alle benötigten Software sowie Mittelwertapplikationen installiert und eingerichtet.
+Für das folgende Projekt wird ein Linux-Server bei dem deutschen Serverhosting-Unternehmen \textit{Netcup} angemietet\vglink{netcup.de}{https://www.netcup.de/}.
+
+\subsection{Betriebssystem}
+Als Betriebssystem wird eine \textit{Rocky Linux} Distribution verwendet.
+\textit{Rocky Linux} ist eine Linux-Distribution und der inoffiziellen Nachfolger der \textit{CentOS 8} Distribution.
+Das Betriebssystem \textit{Rocky Linux} basiert auf der Linux-Distribution \textit{\ac{RHEL8}}.
+Die Gründe für die Entscheidung der Verwendung des Betriebssystems \textit{Rocky Linux} sind vielfältig.
+Wie bereits erwähnt ist das Betriebssystem \textit{Rocky Linux} der inoffizielle Nachfolger des Betriebssystems \textit{CentOS 8} und damit kompatibel mit dem Betriebssystem \textit{\ac{RHEL8}}.
+Das bedeutet, dass alle Funktionen und Einstellungen, welche bei dem Betriebssystem \textit{\ac{RHEL8}} funktionieren, direkt auf dem Betriebssystem \textit{Rocky Linux} übernommen werden können.
+Die große Community, welche hinter dem Betriebssystem \textit{Rocky Linux} steht, sorgt dabei für eine enorme Ansammlung von zur Verfügung stehenden Wissen.
+Das von der Community bereitgestellte Wissen, ist enorm hilfreich, um bei etwaigen Problemen Lösung zu finden.
+Ein weiterer Vorteil, den das Betriebssystem \textit{Rocky Linux} bietet, ist der spezielle Focus auf Stabilität.
+Anderes als andere Linux-Distribution ist das Betriebssystem \textit{Rocky Linux} ebenso wie die Ursprungs-Distribution \textit{\ac{RHEL8}} nicht auf Innovation, sondern auf Stabilität ausgelegt.
+Dazu gehört auch die Langzeitpflege der \ac{LTS} Version.\vgonlinezitat{RHEL8}
+
+\section{Webseite}
+Damit die Studenten der BA-Glauchau den Service zur automatischen E-Mail Benachrichtigung neuer Campus-Dual Noten nutzen können, wird eine Webseite benötigt, auf welcher sich die Studenten registrieren können.
+Dafür müssen sich ein Student zunächst auf der Webseite registrieren und anschließend auf der Webseite anmelden.
+Der Student hat nun die Möglichkeit den Benachrichtigungsservice zu aktivieren, zu deaktivieren oder auch seine gesamten hinterlegten Daten zu löschen.
+Werden alle Daten unwiderruflich gelöscht, ist die Registrierung hinfällig und der Student hat keinen Zugriff mehr auf den Service.
+Für das Projekt wird daher eine Webseite für die Registrierung, eine Webseite für den Login und eine Webseite für die Service-Bedienung benötigt.
+
+\section{Software}
+
+\subsection{Mysql8}
+Für die Speicherung der Daten der einzelnen Studenten wird auf eine \textit{Mysql8-Datenbank} zurückgegriffen.
+Die \textit{Mysql8-Datenbank} wird direkt auf dem \textit{Rocky Linux Server} installiert und eingerichtet.
+Ein Datensatz enthält dabei alle Informationen eines einzelnen Studenten.
+Jedem Student werden die folgenden Attribute zugeordnet.
+
+\textbf{ID:}\\
+Die ID wird zur Identifizierung eines einzelnen Datensatzes benötigt.
+Dieser erhält die zusätzliche Eigenschaft eines Primärschlüssels und darf nur einmal auftreten.
+
+\textbf{Name:}\\
+Der Name dient zur Identifizierung des einzelnen Studenten.
+Dieser wird benötigt, um den Studenten mit dem entsprechenden Namen in der versendeten E-Mail anzusprechen.
+Für den eigentlichen Prozess ist dieser nicht von Bedeutung und kann von daher frei gewählt werden.
+
+\textbf{Email:}\\
+Die E-Mail wird für die Registrierung sowie für den Login benötigt.
+Es muss sich um eine gültige E-Mail handeln, da die Benachrichtigung einer neuen Note im Verwaltungstool \textit{Campus Dual} über an diese E-Mail versendet wird.
+
+\textbf{Matrikelnummer:}\\
+Die Matrikelnummer ist die eindeutige Identifikationsnummer des einzelnen Studenten und muss korrekt angegeben werden.
+Diese wird später benötigt, um an die von \textit{Campus Dual} bereitgestellte \ac{JSON} Datei heranzukommen, in welcher sich die Informationen der neuen Noten befinden.
+
+\textbf{Passwort:}\\
+Das Passwort ist das Passwort, mit welchem sich der Student auf der Webseite anmelden kann, um den Service zu aktivieren, zu deaktivieren bzw. seinen gesamten Datensatz zu löschen.
+Aus Sicherheitsgründen wird das Passwort nicht im Klartext gespeichert, sondern wird mit einer Hashfunktion verschleiert.
+
+\textbf{Hashwert:}\\
+Der Hashwert ist individuell für jeden einzelnen Studenten und muss korrekt angegeben werden.
+Eine Anleitung, wie der einzelne Hashwert herausgefunden werden kann, wird in einem späteren Kapitel näher erläutert.
+Der Hashwert wird benötigt, um an die von \textit{Campus Dual} bereitgestellte \ac{JSON} Datei heranzukommen, in welcher sich die Informationen der neuen Noten befinden.
+
+\textbf{Benachrichtigung:}\\
+Die Benachrichtigung ist ein boolescher Wert und gibt, an, ob der Student eine E-Mail Benachrichtigung erhalten möchte, falls eine neue Note in \textit{Campus Dual} verfügbar ist.
+
+\subsection{Apache}
+Für die Bereitstellung eines Webservices wird auf einen Apache-Server zurückgegriffen.
+Der Apache-Server wird direkt auf dem \textit{Rocky Linux Server} installiert.
+Eine detaillierte Anleitung der Installation und Konfiguration des Apache-Servers wird in einem späteren Kapitel näher erläutert.
+Um die Sicherheit der übertragenen Informationen vom Client zum Server zu erhöhen, wird der Apache-Server mit einem zusätzlich mit Zertifikat ausgestattet.
+
+\subsection{phpmysql}
+Das Verwaltungstool \textit{phpmyadmin} dient zur erleichterten Bedienung und Verwaltung der \textit{Mysql8-Datenbank}.
+Dabei können Datenbanken, Tabellen und Werte übersichtlich und sicher gewartet werden.
+Alternativ besteht die Möglichkeit, die \textit{Mysql8-Datenbank} auch direkt über den \textit{Rocky Linux Server} anzusprechen und einzurichten.
+Eine detaillierte Einleitung zur Installation sowie Konfiguration des Verwaltungstools \textit{phpmyadmin} wird in den späteren Kapiteln näher erläutert.
+Um die Sicherheit zu erhöhen, wird der Zugriff auf die Datenbank über das Verwaltungstool \textit{phpmyadmin} nur über spezielle IP-Adressen erlaubt.
+
+\subsection{Software zum Auswerten neuer Noten}
+
