@@ -1,1 +1,125 @@
-\chapter{Softwarelösung Benachrichtigung}
+\chapter{Benachrichtigungs Software für neue Noten}
+Im folgenden Kapitel wird erläutert, wie die Software zur automatischen Benachrichtigung konzipiert ist und wie diese auf den Server implementiert wird.
+Die BA-Glauchau Vorschriften verbieten zum jetzigen Zeitpunkt die Verwendung realer Daten des Portals \textit{Campus Dual}.
+Für das folgende Kapitel wird daher auf Demodaten zurückgegriffen.
+
+\section{Konzeptionierung}
+Das Grundkonzept der Software ist wie folgt aufgebaut.
+Ein Skript greift auf die Datenbank zu und entnimmt sich die benötigten Daten des Studenten, um an die von der BA-Glauchau bereitgestellte JSON-Datei zu gelangen, worin sich die Informationen des aktuellen Notenstandes befindet.
+Die dafür benötigten Daten bestehen aus dem hinterlegten Hashwert und der Matrikelnummer des Studenten.
+Mit diesen Informationen wird mit dem Linux-Tool \textit{wget} eine Abfrage der aktuellen JSON-Datei durchgeführt.
+Die Abfrage wird wie folgt ausgeführt:
+
+\mintinline{bash}{wget https://selfservice.campus-dual.de/dash/getexamstats?user=4004444&hash=9081f....}
+
+Der Inhalt der Datei ist in \literef{Demo JSON-Datei} abgebildet.
+
+\begin{code}
+    \begin{minted}{bash}
+        EXAMS	25
+        SUCCESS	19
+        FAILURE	2
+        WPCOUNT	5
+        MODULES	19
+        BOOKED	0
+        MBOOKED	19
+    \end{minted}
+    \caption[Demo JSON-Datei]{Demo JSON-Datei}
+    \label{Demo JSON-Datei}
+\end{code}
+
+Der aktuelle Notenstand (SUCCESS) wird aus dieser Datei ausgelesen und mit dem Notenstand verglichen, welcher sich im MariaDB Datensatz des Studenten befindet.
+Ist der Notenstand der JSON-Datei größer als der, in der Datenbank hinterlegten Notenstand, ist demnach eine neue Note in \textit{Campus Dual} verfügbar.
+Trifft dieser Fall zu, wird eine E-Mail an den Studenten versendet.
+Die E-Mail-Adresse ist dabei die E-Mail, welche der Student bei der Registrierung verwendet hat.
+
+\newpage
+\section{Umsetzung}
+\textbf{exams.py}
+\begin{code}[H]
+    \begin{minted}{python}
+        import json
+        import requests as requests
+        
+        from email_notifier import generate_email
+        
+        
+        def get_userdata():
+            with open("config/campus_dual.json") as conf_file:
+                user_data = json.load(conf_file)
+            return user_data.get('username'), user_data.get('userhash')
+        
+        
+        def get_diff(username: str, userhash: str):
+            url = "https://selfservice.campus-dual.de/dash/getexamstats?user=" + username + "&hash=" + userhash
+            if requests.get(url, verify=False).status_code != 200:
+                print("Something went wrong")
+                return None
+        
+            # Open old stats and save in exam_stats
+            with open("config/examstats.json", mode='r') as file:
+                exam_stats = json.load(file)
+        
+            # Get latest stats
+            new_stats = requests.get(url, verify=False).json()
+        
+            # Look for change
+            if exam_stats != new_stats:
+                x = None
+                if new_stats.get('EXAMS') > exam_stats.get('EXAMS'):
+                    x = 'a'
+                    if new_stats.get("SUCCESS") > exam_stats.get('SUCCESS'):
+                        x = 'ab'
+                    elif new_stats.get("FAILURE") > exam_stats.get('FAILURE'):
+                        x = 'ac'
+                elif new_stats.get('BOOKED') > exam_stats.get('BOOKED'):
+                    x = 'd'
+                if x is not None:
+                    generate_email(x)
+                with open("config/examstats.json", mode='w') as file:
+                    json.dump(new_stats, file)
+    \end{minted}
+    \caption[exams.py]{exams.py}
+    \label{exams.py}
+\end{code}
+
+\textbf{main.py}
+\begin{code}[H]
+    \begin{minted}{python}
+        from exams import get_userdata, get_diff
+        if __name__ == '__main__':
+            username, userhash = get_userdata()
+            get_diff(username, userhash)
+    \end{minted}
+    \caption[main.py]{main.py}
+    \label{main.py}
+\end{code}
+
+\textbf{email\_notifier.py}
+\begin{code}[H]
+    \begin{minted}{python}
+from fpdf import FPDF
+
+def send_email():
+    pass
+
+def generate_email(variante: str):
+    email_pdf = FPDF()
+    email_pdf.add_page()
+    email_pdf.set_font("Arial", size=15)
+    if 'a' in variante:
+        email_pdf.cell(200, 10, txt="Neue Prüfungsergebnisse!", ln=1, align='C')
+        if 'b' in variante:
+            email_pdf.cell(200, 10, txt="Prüfung bestanden!", ln=2, align='C')
+        if 'c' in variante:
+            email_pdf.cell(200, 10, txt="Durchgefallen!", ln=2, align='C')
+        else:
+            email_pdf.cell(200, 10, txt="Bitte öffne Campus Dual!", ln=2, align='C')
+        email_pdf.output("Email.pdf")
+    elif 'd' in variante:
+        email_pdf.cell(200, 10, txt="Neue Anmeldungen verfügbar!", ln=1, align='C')
+        email_pdf.output("Email.pdf")
+    \end{minted}
+    \caption[main.py]{main.py}
+    \label{main.py}
+\end{code}

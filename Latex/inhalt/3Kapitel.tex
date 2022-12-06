@@ -1,5 +1,387 @@
 \chapter{Installation und Konfiguration}
 \section{Rocky-Linux Distribution}
-\section{Mysql8-Datenbank}
+Um den Server wie gewünscht nutzen zu können, sind einige Vorbereitungsschritte für die Grundkonfiguration der \textit{Rocky Linux Distribution} auszuführen.
+Dazu gehört die eigentliche Installation der Distribution sowie weitere Server interne Konfigurationen.
+Das Betriebssystem wird als Minimalkonfiguration installiert\fn{Eine Server-Minimalinstallation dient lediglich der Installation des Betriebssystems ohne weitere bzw. ungewünschter Softwareapplikationen.}.
+Nach der erfolgreichen Installation des Betriebssystems ist der Server einsatzbereit.
+Es werden die folgenden Serverkonfigurationen durchgeführt:
+
+\textbf{SSH-Zugänge}
+
+Das Arbeiten auf dem Server ist essenziell.
+Die von \textit{NetCup} zur Verfügung gestellte Kommandozeilenkonsole ist jedoch nicht für effizientes Arbeiten ausgelegt.
+Diese dient ausschließlich für den grundlegenden Zugriff des neu aufgesetzten Servers und bietet keine weiteren Funktionen wie beispielsweise \textit{Copy-and-paste} oder das Importieren von Dateien.
+Um über Dritt-Anbieter, wie beispielsweise \textit{MobaXterm} auf den Server zuzugreifen, wird daher für jeden Entwickler ein entsprechender Nutzer mit \ac{SSH}-Zugriffsrechten benötigt.
+Für das folgende Projekt werden die Nutzer \textit{til} und \textit{erik} angelegt.
+Die Nutzer werden mit den folgenden Kommandozeilenbefehlen aus \literef{Linux-Benutzer anlegen} erstellt und anschließend mit Root-Rechten versehen.\vgonlinezitat{user}
+
+\begin{code}
+    \begin{minted}{bash}
+        # neuen Benutzer til erstellen
+        adduser til
+        # neuen Benutzer erik erstellen
+        adduser erik
+
+        # neues Passwort für Benutzer til festlegen
+        passwd til
+        # neues Passwort für Benutzer erik festlegen
+        passwd erik
+
+        # Benutzer til in die wheel Gruppe (root) hinzufügen
+        usermod -aG wheel til
+        # Benutzer erik in die wheel Gruppe (root) hinzufügen
+        usermod -aG wheel erik
+    \end{minted}
+    \caption[Linux-Benutzer anlegen]{Linux-Benutzer anlegen}
+    \label{Linux-Benutzer anlegen}
+\end{code}
+
+\newpage
+
+Nachdem die Benutzer angelegt und mit den entsprechenden Rechten versehen wurden, werden die \ac{SSH}-Schlüssel eingerichtet.
+Für die Generierung neuer \ac{SSH}-Schlüssel steht das Linux-Tool \textit{ssh-keygen} zur Verfügung, welches standardmäßig in der Minimalinstallation enthalten ist.
+Das Tool \textit{ssh-keygen} erzeugt dabei einen privaten sowie öffentlichen \ac{SSH}-Schlüssel.
+Die \ac{SSH}-Schlüssel werden mit dem folgenden Kommandozeilenbefehlen generiert und erzeugen die folgende Ausgabe - \fullref{Generierung der SSH-Schlüssel}.\vgonlinezitat{ssh}
+\begin{code}
+    \begin{minted}{bash}
+        # mit den Benutzer til
+        ssh-keygen
+        # Ausgabe auf der Konsole
+        Generating public/private rsa key pair.Enter file in which to save the key (/home/til/.ssh/id_rsa):
+
+        # mit den Benutzer erik
+        ssh-keygen
+        # Ausgabe auf der Konsole
+        Generating public/private rsa key pair.Enter file in which to save the key (/home/erik/.ssh/id_rsa): 
+    \end{minted}
+    \caption[Generierung der SSH-Schlüssel]{Generierung der SSH-Schlüssel}
+    \label{Generierung der SSH-Schlüssel}
+\end{code}
+
+Mit den hinterlegten \ac{SSH}-Schlüssel der Benutzer ist es nun möglich, eine sichere SSH-Verbindung zu dem Server aufzubauen.
+
+\textbf{Server-Zugang beschränken}
+
+Aus Sicherheitsgründen wird der Zugang auf den Server beschränkt.
+Befugte Nutzer soll es nur möglich sein, mit einer sicheren SSH-Verbindung auf den Server zuzugreifen.
+Eine Verbindung mit dem Server mittels Passwort wird verboten.
+Zudem ist eine remote Verbindung mit dem Root-Benutzer nicht möglich.
+Dafür wird die folgende Konfigurationdatei wie angepasst:
+
+\mintinline{bash}{/etc/ssh/sshd_config}
+
+Die Konfigurationsdatei enthält Einstellungen, welche die SSH-Zugriffsrechte des Servers abbilden.
+In der oben aufgezeigten Konfigurationdatei werden die folgen zwei Zeilen wie folgt angepasst - \fullref{Anpassung der sshd_config}.
+
+\begin{code}[H]
+    \begin{minted}{bash}
+        sudo vi /etc/ssh/sshd_config
+
+        PasswordAuthentication no
+        PermitRootLogin no
+    \end{minted}
+    \caption[Anpassung der sshd\_config]{Anpassung der sshd\_config}
+    \label{Anpassung der sshd_config}
+\end{code}
+
+Um die neu gesetzten SSH-Zugriffsrechte zu aktivieren, ist ein Neustart des sshd-Services nötig.
+Der sshd-Service wird mit dem folgenden Kommandozeilenbefehle neu gestartet:
+
+\mintinline{bash}{sudo systemctl restart sshd}
+
+Die SSH-Zugriffsrechte sind nun gültig.
+Gültige Benutzer können sich jetzt nur noch über die SSH-Schlüssel mit dem Server verbinden.
+Dem Root-Benutzer wird ein Remote-Login untersagt.\vgonlinezitat{sshaccess}
+
+\textbf{Deaktivierung SELinux}
+
+\ac{SELinux} ist eine Sicherheitsarchitektur für Linux-Systeme.
+Mithilfe dieser Architektur können diverse sicherheitstechnische Prozesse und Zugriffe gezielt gesteuert und kontrolliert werden.
+Entwickelt wurde das Konzept von der US-amerikanischen \ac{NSA}.
+Im Jahre 2000 wurde SELinux schließlich als Open-Source freigegeben und 2003 in den Linux-Upstream-Kernel integriert.\vgonlinezitat{selinux}
+
+SELinux bietet diverse Vorteile bei der Überwachung und Kontrolle von Prozesszugriffen.
+Durch die enorme Komplexität können jedoch auch Zugriffsfehler entstehen, welche nur schwer zu lösen sind.
+Eine manuelle Veränderung der SELinux-Konfiguration ist nur unter äußerster Vorsicht durchzuführen.
+Flasche bzw. undurchdachte Einstellungen können zu Fehlen führen, welche nur sehr schwer wieder zu entfernen sind.
+Von der manuellen Konfiguration SELinuxs wird daher abgeraten.
+
+Für das folgende Projekt wird SELinux deaktiviert.
+Der Status von SELinux kann mit dem folgenden Kommandozeilenbefehle abgefragt werden:\vgonlinezitat{selinuxno}
+
+\mintinline{bash}{sestatus}
+
+Um SELinux zu deaktiveren wird die SELinux-Konfigurationdatei wie folgt verändert - \fullref{Deaktivierung SELinux}
+
+\begin{code}
+    \begin{minted}{bash}
+# This file controls the state of SELinux on the system.
+# SELINUX= can take one of these three values:
+#     enforcing - SELinux security policy is enforced.
+#     permissive - SELinux prints warnings instead of enforcing.
+#     disabled - No SELinux policy is loaded.
+SELINUX=disabled
+# SELINUXTYPE= can take one of these three values:
+#     targeted - Targeted processes are protected,
+#     minimum - Modification of targeted policy. Only selected processes are protected. 
+#     mls - Multi Level Security protection.
+SELINUXTYPE=targeted
+    \end{minted}
+    \caption[Deaktivierung SELinux]{Deaktivierung SELinux}
+    \label{Deaktivierung SELinux}
+\end{code}
+
+
+
+\section{MariaDB-Datenbank}
+Für die Sicherung der Anmeldedaten der einzelnen Studenten wird eine Datenbank benötigt.
+Gleichzeitig werden hier auch alle weiteren Stunden spezifischen Daten hinterlegt.
+Diese Datenbank wird direkt auf dem Server installiert und eingerichtet.
+Die Software, welche zum späteren Zeitpunkt zur Ermittlung einer neuen Campus-Dual Note eingesetzt wird, erhält alle benötigten Informationen des Studenten aus dieser Datenbank.
+Für das folgende Projekt wird eine Maria-Datenbank eingesetzt.
+
+\textbf{MariaDB-Service installieren und aktivieren}
+
+Für die Einrichtung einer MariaDB werden die folgenden Pakete heruntergeladen und anschließend installiert.
+
+\mintinline{bash}{dnf install mariadb-server mariadb}
+
+Im Anschluss wird der MariaDB-Service mit dem Linux-Tool \textit{systemctl} eingeschalten und dauerhaft aktiviert.
+Hierfür wird der folgende Kommandozeilenbefehle verwendet.
+
+\mintinline{bash}{systemctl enable --now mariadb}
+
+Die Option \textit{enable} sorgt für die dauerhafte Aktivierung des Services.
+Das bedeutet, dass der Service bei jedem Neustart des Servers automatisch und ohne weiteres Eingreifen hochgefahren wird.
+Somit ist die Datenbank auch erreichbar, wenn der Server einmal neu hochfährt.
+Jedoch wird der Service durch diese Option erst nach erstmaligen Neustart des Servers aktiv.
+Die Option \textit{--now} sorgt für die Aktivierung des Services direkt nach der Eingabe des Kommandozeilenbefehls.
+Der MariaDB-Service ist somit direkt aktiv und startet sich bei jedem Neustart des Servers automatisch.
+\newpage
+
+\textbf{mysql\_secure\_installation}
+
+Die Installation der Maria-Datenbank wird mit dem folgenden Kommandozeilenbefehl eingeleitet.
+
+\mintinline{bash}{mysql_secure_installation}
+
+Der Kommandozeilenbefehl startet eine interaktive Installationsanleitung.
+Die MariaDB wird entsprechend der ausgewählten Optionen installiert und eingerichtet.
+Der folgende \literef{mysql_secure_installation} zeigt, die verwendetet MariaDB Installationskonfiguration.\vgonlinezitat{mariadb}
+
+\begin{code}
+    \begin{minted}{bash}
+NOTE: RUNNING ALL PARTS OF THIS SCRIPT IS RECOMMENDED FOR ALL MariaDB
+SERVERS IN PRODUCTION USE!  PLEASE READ EACH STEP CAREFULLY!
+
+In order to log into MariaDB to secure it, we'll need the current
+password for the root user.  If you've just installed MariaDB, and
+you haven't set the root password yet, the password will be blank,
+so you should just press enter here.
+  
+Enter current password for root (enter for none): 
+OK, successfully used password, moving on...
+
+Change the root password? [Y/n] Y
+... Success!
+
+Remove anonymous users? [Y/n] Y
+... Success!
+  
+Disallow root login remotely? [Y/n] Y
+... Success!
+  
+Remove test database and access to it? [Y/n] Y
+... Success!
+  
+Reload privilege tables now? [Y/n] Y
+... Success!
+  
+Cleaning up...
+All done!  If you've completed all of the above steps, your MariaDB
+installation should now be secure.
+  
+Thanks for using MariaDB!
+    \end{minted}
+    \caption[mysql\_secure\_installation]{mysql\_secure\_installation}
+    \label{mysql_secure_installation}
+\end{code}
+
+\textbf{Anlegen der Datenbank}
+Nach der erfolgreichen Installation MariaDBs wird eine Datenbank angelegt.
+Mit dem folgenden Kommandozeilenbefehl verbindet sich der Root-Benutzer mit der MariaDB.
+
+\mintinline{bash}{mysql -u root -p}
+
+Unter der Option \textit{-u root} wird der MariaDB-Nutzer angegeben, welcher sich mit der Datenbank verbindet.
+
+Mit der Option \textit{-p} wird eine interaktive Passwortabfrage erzeugt, welche die Verbindung autorisiert.
+
+Ist die Verbindung aufgebaut, kann mit dem folgenden Befehle die benötigte Datenbank erstellt werden - \fullref{Anlegen der Datenbank}.\vgonlinezitat{datenbank}
+
+\begin{code}
+    \begin{minted}{bash}
+[root@debian:~]# mysql -u root -p
+Enter password:
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+Your MariaDB connection id is 48677
+Server version: 10.3.31-MariaDB-0 Rocky8
+
+Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+MariaDB [(none)]> CREATE DATABASE campusdual;
+Query OK, 1 row affected (0.00 sec)
+
+mysql> exit;
+    \end{minted}
+    \caption[Anlegen der Datenbank]{Anlegen der Datenbank}
+    \label{Anlegen der Datenbank}
+\end{code}
+
+
+\textbf{Anlegen der Tabelle}
+
+Nach dem erfolgreichen Anlegen der Datenbank \textit{campusdual} wird die benötigte Tabelle mit entsprechenden Attributen angelegt.
+Hierfür werden die folgenden Befehle ausgeführt - \fullref{Anlegen der Tabelle}.\vgonlinezitat{tabelle}
+
+\begin{code}[H]
+    \begin{minted}{yaml}
+
+mysql> CREATE TABLE `campusdual`.`User` ( `id` INT NOT NULL AUTO_INCREMENT ,  `name` CHAR(255) NOT NULL ,  `email` CHAR(255) NOT NULL ,  `password` TEXT NOT NULL ,  `hash` TEXT NULL ,  `mnr` INT(7) NULL ,  `notification` BOOLEAN NULL DEFAULT NULL ,    PRIMARY KEY  (`id`)) ENGINE = InnoDB;
+Query OK, 1 row affected (0.00 sec)
+
+mysql> exit;
+
+    \end{minted}
+    \caption[Anlegen der Tabelle]{Anlegen der Tabelle}
+    \label{Anlegen der Tabelle}
+\end{code}
+
+\textbf{Anlegen der Datenbanknutzer}
+\label{dbuser}
+
+Das Arbeiten mit dem Root-Benutzer ist aus Sicherheitsgründen nicht zu empfehlen.
+Daher wird ein zusätzlicher Benutzer angelegt, welcher im späteren Verlauf mit der MariaDB interagiert.
+Ein MariaDB-Benutzer kann mit dem folgenden Befehlen erstellt werden - \fullref{Anlegen eines Nutzers}.\vgonlinezitat{userdb}
+
+\begin{code}
+    \begin{minted}{yaml}
+
+mysql> CREATE USER 'campusdualuser'@'%' IDENTIFIED BY '**********';
+Query OK, 1 row affected (0.00 sec)
+GRANT ALL PRIVILEGES ON campusdual . * TO 'campusdualuser'@'%';
+Query OK, 1 row affected (0.00 sec)
+FLUSH PRIVILEGES;
+Query OK, 1 row affected (0.00 sec)
+
+mysql> exit;
+
+    \end{minted}
+    \caption[Anlegen eines Nutzers]{Anlegen eines Nutzers}
+    \label{Anlegen eines Nutzers}
+\end{code}
+
+\textbf{Portfreigabe für Fernzugriff}
+
+Die standardmäßige Konfiguration der MariaDB verhindert ein Fernzugriff auf die Datenbank.
+Der Fernzugriff wird jedoch benötigt, damit die Stunden sich von jedem beliebigen Gerät mit beliebiger IP-Adresse auf der Webseite für den Service registrieren können.
+Um die entsprechenden Ports innerhalb der Firewall freizugeben, werden die folgenden Kommandozeilenbefehle verwendet.
+
+\mintinline{bash}{sudo firewall-cmd --zone=public --add-service=mysql --permanent}
+
+\mintinline{bash}{sudo firewall-cmd --reload}
+
+\newpage
+
 \section{Apache-Server}
+Für die Webseite der Registrierung, Anmeldung und der Service-Bedienung wird ein Apache-Server verwendet.
+Dieser wird direkt auf dem Server installiert.
+
+\textbf{Installation und Konfiguration}
+
+Zunächst wird das benötigte Paket heruntergeladen und installiert.
+Dazu wird der folgende Kommandozeilenbefehl verwendet.
+
+\mintinline{bash}{sudo dnf install httpd}
+
+Um den httpd-Service zu nutzen, muss dieser zunächst gestartet und aktiviert werden.
+Hierfür wird der folgende Kommandozeilenbefehl verwendet.
+
+\mintinline{bash}{sudo systemctl enable --now httpd}
+
+Für die Überprüfung des Service-Zustandes steht der folgende Kommandozeilenbefehl zur Verfügung.
+
+\mintinline{bash}{sudo systemctl status httpd}
+
+Anschließend wird der Service für die Firewall freigegeben.
+Der Service kann mithilfe des folgenden Kommandozeilenbefehls freigeschaltet werden.
+
+\mintinline{bash}{sudo firewall-cmd --add-service=http --permanent}
+
+Erst nun ist es möglich, auch von nicht lokalen IP-Adressen auf den Apache-Server zuzugreifen.
+Um die Firewall-Einstellungen zu übernehmen, wird der Firewall-Service neu gestartet.
+Der Firewall-Service wird mit dem folgenden Kommandozeilenbefehl neu gestartet.
+
+\mintinline{bash}{sudo firewall-cmd --reload}
+
+\textbf{Aufbau der Webseiten}
+
+\textit{Registrierung:}\\
+Auf der Register-Webseite werden die Daten des Studenten in die Datenbank übertragen, um sich für den Service der Benachrichtigung zu registrieren.
+Der Student muss für die Registrierung die folgenden Daten angeben: Name, Passwort, E-Mail, Hashwert, Matrikelnummer.
+Zunächst werden alle Daten validiert.
+Sind die Daten korrekt, verbindet sich der in \literef{dbuser} erstellte MariaDB-Benutzers mit der Datenbank und trägt die entsprechenden Daten in einen neuen Datensatz ein.
+Der Student ist nun registriert und kann den Benachrichtigungsservice aktivieren.
+
+\newpage
+
+\textit{Anmeldung:}\\
+Auf der Anmelde-Webseite kann sich der Student mit seinen vorher registrierten Daten anmelden und wird damit auf die Webseite zur Bedienung des Services weitergeleitet.
+Dafür muss der Student die hinterlegte E-Mail und das entsprechende Passwort eingeben.
+Die Daten werden zunächst validiert.
+Handelt es sich um valide Daten, werden diese mit den Daten aus der Datenbank abgeglichen.
+Bei erfolgreicher Anmeldung wird ein Session-Cookie erzeugt und der Student auf die Webseite zur Bedienung des Services zur Benachrichtigung weitergeleitet.
+
+\textit{Bedienung:}\\
+Auf der Webseite zur Bedienung des Services kann der Student die Option zur Benachrichtigung via E-Mail aktivieren.
+Dabei wird im Hintergrund der Wert des Attributes \textit{notification} des Datensatzes auf true gesetzt.
+Standardmäßig wird dieser Wert innerhalb der Registrierung auf false gesetzt.
+Falls gewünscht, kann der Student seinen gesamten Datensatz aus der Datenbank löschen.
+Damit ist die Registrierung widerrufen und der Benachrichtigungsservice automatisch deaktiviert.
+
 \section{phpmyadmin}
+\textit{Phpmyadmin} ist eine quelloffene Software zur Verwaltung von SQL-Datenbanken im Webbrowser.
+Diese wird verwendet, um die Datenbanken zu pflegen und zu warten.
+Der größte Vorteil besteht dabei aus der benutzerfreundlichen Bedienoberfläche sowie der Möglichkeit auch remote auf die Datenbank zugreifen zu können.
+Für die Installation von \textit{phpmyadmin} wird \textit{php} vorausgesetzt.
+Daher wird auf dem Server zunächst \textit{php} heruntergeladen und installiert.
+
+\mintinline{bash}{sudo dnf module list php}
+
+Im folgenden Projekt wird die PHP-Version 7.4 verwendet.
+
+\mintinline{bash}{sudo dnf module install php:7.4}
+
+Anschließend kann mit der Installation \textit{phpmyadmins} vorgefahren werden.
+Dafür wird in das folgende Verzeichnis gewechselt und mithilfe des Linux-Tools \textit{wget} die benötigte Zip-Datei heruntergeladen.
+
+\mintinline{bash}{sudo cd /var/www}
+
+\mintinline{bash}{wget https://files.phpmyadmin.net/phpMyAdmin/5.1.1/phpMyAdmin-5.1.1-all-languages.zip}
+
+Die Zip-Datei wird entpackt und umbenannt.
+
+\mintinline{bash}{unzip phpMyAdmin*}
+
+\mintinline{bash}{mv phpMyAdmin* phpmyadmin}
+
+Nun werden der Datei die entsprechenden Rechte vergeben.
+
+\mintinline{bash}{sudo chown -R apache:apache phpmyadmin}
+
+Die Datenbank ist nun über die Domain \textit{/phpmyadmin} erreichbar.
+Der MariaDB-Nutzer kann sich nun mit den entsprechenden Anmeldedaten mit der Datenbank verbinden - siehe \literef{Anmeldung für phpmyadmin}.
+
+\bild[1]{phpmyadmin.png}{Anmeldung für phpmyadmin}{Anmeldung für phpmyadmin}

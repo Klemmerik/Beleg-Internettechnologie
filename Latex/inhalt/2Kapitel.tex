@@ -33,7 +33,7 @@ Für das Projekt wird daher eine Webseite für die Registrierung, eine Webseite 
 
 \section{Software}
 
-\subsection{Mysql8}
+\subsection{MariaDB}
 Für die Speicherung der Daten der einzelnen Studenten wird auf eine \textit{Mysql8-Datenbank} zurückgegriffen.
 Die \textit{Mysql8-Datenbank} wird direkt auf dem \textit{Rocky Linux Server} installiert und eingerichtet.
 Ein Datensatz enthält dabei alle Informationen eines einzelnen Studenten.
@@ -57,7 +57,7 @@ Die Matrikelnummer ist die eindeutige Identifikationsnummer des einzelnen Studen
 Diese wird später benötigt, um an die von \textit{Campus Dual} bereitgestellte \ac{JSON} Datei heranzukommen, in welcher sich die Informationen der neuen Noten befinden.
 
 \textbf{Passwort:}\\
-Das Passwort ist das Passwort, mit welchem sich der Student auf der Webseite anmelden kann, um den Service zu aktivieren, zu deaktivieren bzw. seinen gesamten Datensatz zu löschen.
+Das Passwort ist das Kennwort, mit welchem sich der Student auf der Webseite anmelden kann, um den Service zu aktivieren, zu deaktivieren bzw. seinen gesamten Datensatz zu löschen.
 Aus Sicherheitsgründen wird das Passwort nicht im Klartext gespeichert, sondern wird mit einer Hashfunktion verschleiert.
 
 \textbf{Hashwert:}\\
@@ -67,6 +67,9 @@ Der Hashwert wird benötigt, um an die von \textit{Campus Dual} bereitgestellte 
 
 \textbf{Benachrichtigung:}\\
 Die Benachrichtigung ist ein boolescher Wert und gibt, an, ob der Student eine E-Mail Benachrichtigung erhalten möchte, falls eine neue Note in \textit{Campus Dual} verfügbar ist.
+
+\textbf{Letzter Notenstand:}\\
+Damit die spätere Software den aktuellen und neuen Notenstand vergleichen kann, wird ein Attribut benötigt, welches den stets aktuellen Notenstand des Studenten beinhaltet.
 
 \subsection{Apache}
 Für die Bereitstellung eines Webservices wird auf einen Apache-Server zurückgegriffen.
@@ -81,5 +84,5 @@ Alternativ besteht die Möglichkeit, die \textit{Mysql8-Datenbank} auch direkt �
 Eine detaillierte Einleitung zur Installation sowie Konfiguration des Verwaltungstools \textit{phpmyadmin} wird in den späteren Kapiteln näher erläutert.
 Um die Sicherheit zu erhöhen, wird der Zugriff auf die Datenbank über das Verwaltungstool \textit{phpmyadmin} nur über spezielle IP-Adressen erlaubt.
 
-\subsection{Software zum Auswerten neuer Noten}
+%\subsection{Software zum Auswerten neuer Notesn}
 
